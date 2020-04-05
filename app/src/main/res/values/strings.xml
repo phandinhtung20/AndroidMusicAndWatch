@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">MySmartWatch</string>
+    <string name="open_the_watch">Open the watch</string>
+    <string name="open_the_control_center">Open the control center</string>
+    <string name="please_choose_state_you_want">please choose state you want</string>
+    <string name="welcome_to_my_smart_watch_app">WELCOME TO MY SMART WATCH APP</string>
+</resources>

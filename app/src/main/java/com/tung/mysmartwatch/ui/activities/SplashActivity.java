@@ -1,4 +1,4 @@
-package com.tung.mysmartwatch.activities;
+package com.tung.mysmartwatch.ui.activities;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -19,10 +19,11 @@ public class SplashActivity extends AppCompatActivity {
     private Runnable runnable = new Runnable() {
         @Override
         public void run() {
-            Intent intent = new Intent(SplashActivity.this, ControllerActivity.class);
+//            Intent intent = new Intent(SplashActivity.this, ControllerActivity.class);
 
-//            Intent intent = new Intent(SplashActivity.this, ConfigureActivity.class);
+            Intent intent = new Intent(SplashActivity.this, ConfigureActivity.class);
             startActivity(intent);
+            finish();
         }
     };
 

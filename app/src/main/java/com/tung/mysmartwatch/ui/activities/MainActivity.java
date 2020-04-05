@@ -1,48 +1,57 @@
-package com.tung.mysmartwatch.activities;
+package com.tung.mysmartwatch.ui.activities;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.content.Intent;
+import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.TextView;
 
 import com.tung.mysmartwatch.R;
 
-public class ConfigureActivity extends AppCompatActivity implements View.OnClickListener {
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
+public class MainActivity extends AppCompatActivity {
+    private TextView tvDate;
+
+    private SimpleDateFormat dateFormat;
+
+    private Handler handler;
+    private Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            int nextTime = updateTime();
+            handler.postDelayed(this, nextTime);
+        }
+    };
+
+    @SuppressLint("SimpleDateFormat")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_configure);
+        setContentView(R.layout.activity_main);
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        findViewById(R.id.btn_control).setOnClickListener(this);
-        findViewById(R.id.btn_watch).setOnClickListener(this);
+        handler = new Handler();
+        tvDate = findViewById(R.id.tv_date);
+        dateFormat = new SimpleDateFormat("hh : mm : ss");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         hideNavigatorBar();
+        handler.postDelayed(runnable, 100);
     }
 
-    @Override
-    public void onClick(View view) {
-        Intent intent = null;
-        switch (view.getId()) {
-            case R.id.btn_watch:
-                intent = new Intent(this, MainActivity.class);
-                break;
-            case R.id.btn_control:
-                intent = new Intent(this, ControllerActivity.class);
-                break;
-        }
-        if (intent != null) {
-            startActivity(intent);
-        }
+    private int updateTime() {
+        Date now = new Date();
+        tvDate.setText(dateFormat.format(now));
+        return (int) (1000 - (now.getTime() % 1000));
     }
 
     private void hideNavigatorBar() {

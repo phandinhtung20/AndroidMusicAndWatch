@@ -1,4 +1,4 @@
-package com.tung.mysmartwatch.activities;
+package com.tung.mysmartwatch.ui.activities;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -6,6 +6,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.WallpaperManager;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -15,7 +16,9 @@ import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.view.DisplayCutout;
 import android.view.View;
@@ -26,19 +29,24 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.tung.mysmartwatch.R;
 import com.tung.mysmartwatch.adapters.MusicItemAdapter;
 import com.tung.mysmartwatch.models.MusicItem;
-import com.tung.mysmartwatch.services.MusicService;
-import com.tung.mysmartwatch.services.MusicServiceBinder;
+import com.tung.mysmartwatch.utils.broadcast.BroadcastUtils;
+import com.tung.mysmartwatch.utils.services.MusicService;
+import com.tung.mysmartwatch.utils.services.MusicServiceBinder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ControllerActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
-    private ListView lvMusic;
+    private TextView tvMusicName;
+    private ProgressBar pbDuration;
     private List<MusicItem> listMusic;
     private ArrayAdapter musicAdapter;
 
@@ -48,6 +56,8 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
             serviceBinder = (MusicServiceBinder) iBinder;
+            serviceBinder.setContext(ControllerActivity.this);
+            createAudioProgressbarUpdater();
         }
 
         @Override
@@ -64,7 +74,9 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        lvMusic = findViewById(R.id.lv_music);
+        tvMusicName = findViewById(R.id.tv_music_name);
+        pbDuration = findViewById(R.id.pb_audio_duration);
+        ListView lvMusic = findViewById(R.id.lv_music);
         listMusic = new ArrayList<>();
         musicAdapter = new MusicItemAdapter(this, R.layout.layout_music_item, listMusic);
         lvMusic.setAdapter(musicAdapter);
@@ -98,6 +110,7 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        serviceBinder.releaseBinder();
         unbindMusicService();
     }
 
@@ -119,7 +132,7 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0";
 
         String[] projection;
-        boolean newVersion = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q;
+        boolean newVersion = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
         if (newVersion) {
             projection = new String[]{
                     MediaStore.Audio.Media._ID,
@@ -151,6 +164,7 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
                     cursor.getString(3), newVersion ? cursor.getInt(5) : 0));
         }
 
+        Collections.sort(listMusic);
         musicAdapter.notifyDataSetChanged();
     }
 
@@ -200,42 +214,14 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     }
 
     private void playMusic(int i) {
-        serviceBinder.setAudioFile(listMusic.get(i).getUri());
-//        serviceBinder.setStreamAudio(true);
-        serviceBinder.setContext(this);
-//        serviceBinder.setAudioProgressUpdateHandler(audioProgressUpdateHandler);
-        serviceBinder.startAudio();
-        
-//        Intent intent = new Intent(this, MusicService.class);
-//        intent.putExtra("link", listMusic.get(i).getUri());
-//        startService(intent);
+        tvMusicName.setText(listMusic.get(i).getName());
+        pbDuration.setMax(listMusic.get(i).getDuration());
+        serviceBinder.setAudioProgressUpdateHandler(audioProgressUpdateHandler);
+        serviceBinder.startAudioFile(listMusic.get(i).getUri());
 
-
-//        Uri uri = Uri.fromFile(new File(listMusic.get(i).getUri()));
-//        MediaPlayer mediaPlayer = MediaPlayer.create(this, uri);
-//        if (mediaPlayer != null) {
-//            mediaPlayer.setLooping(false);
-//            mediaPlayer.start();
-//        } else {
-//            System.out.println("Media null ma oi");
-//        }
-
-//        System.out.println(Environment.getExternalStorageDirectory().getAbsolutePath());
-//        System.out.println("Music file: " + listMusic.get(i).getUri());
-////        String path = Environment.getExternalStorageDirectory(); //getExternalStorage() + "/"+ fileName+".mp3";
-//        MediaPlayer player = new MediaPlayer();
-//
-//        try {
-//            player.setDataSource(listMusic.get(i).getUri());
-//            player.prepare();
-//            player.start();
-//        } catch (IllegalArgumentException e) {
-//            e.printStackTrace();
-//        } catch (Exception e) {
-//            System.out.println("Exception of type : " + e.toString());
-//            e.printStackTrace();
-//        }
-
+        Intent intentBC = new Intent("music.event");
+        intentBC.putExtra("name", "Play music");
+        BroadcastUtils.sendImplicitBroadcast(this, intentBC);
     }
 
     @Override
@@ -266,6 +252,22 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
                     return windowInsets;
                 }
             });
+        }
+    }
+
+    private Handler audioProgressUpdateHandler = null;
+    @SuppressLint("HandlerLeak")
+    private void createAudioProgressbarUpdater() {
+        if(audioProgressUpdateHandler == null) {
+            audioProgressUpdateHandler = new Handler() {
+                @Override
+                public void handleMessage(Message msg) {
+                    if (msg == null) return;
+                    if (msg.what == serviceBinder.UPDATE_AUDIO_PROGRESS_BAR) {
+                        pbDuration.setProgress(serviceBinder.getCurrentPosition());
+                    }
+                }
+            };
         }
     }
 }

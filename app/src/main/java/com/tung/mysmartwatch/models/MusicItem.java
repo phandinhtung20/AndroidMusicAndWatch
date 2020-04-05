@@ -1,6 +1,6 @@
 package com.tung.mysmartwatch.models;
 
-public class MusicItem {
+public class MusicItem implements Comparable<MusicItem> {
     private String name;
     private String singer;
     private String uri;
@@ -48,5 +48,10 @@ public class MusicItem {
 
     public void setUri(String uri) {
         this.uri = uri;
+    }
+
+    @Override
+    public int compareTo(MusicItem musicItem) {
+        return this.getName().compareTo(musicItem.getName());
     }
 }
