@@ -58,29 +58,9 @@ public class MusicServiceBinder extends Binder {
             mediaPlayer.start();
         }
 
-//        Thread updateAudioProgressThread = new Thread() {
-//            @Override
-//            public void run() {
-//                while (true) {
-//                    Message updateAudioProgressMsg = new Message();
-//                    updateAudioProgressMsg.what = UPDATE_AUDIO_PROGRESS_BAR;
-//
-//                    System.out.println("UPDATE_AUDIO_PROGRESS_BAR");
-//                    audioProgressUpdateHandler.sendMessage(updateAudioProgressMsg);
-//
-//                    try {
-//                        Thread.sleep(1000);
-//                    } catch(InterruptedException ex) {
-//                        ex.printStackTrace();
-//                    }
-//                }
-//            }
-//        };
-//        // Run above thread object.
-//        updateAudioProgressThread.start();
-
         audioProgressUpdateHandler.removeCallbacks(runnable);
         audioProgressUpdateHandler.post(runnable);
+//        mediaPlayer.setOnCompletionListener();
     }
 
     private Handler audioProgressUpdateHandler;
@@ -99,8 +79,11 @@ public class MusicServiceBinder extends Binder {
     }
 
     public void releaseBinder() {
-        mediaPlayer.stop();
-        mediaPlayer.release();
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            audioProgressUpdateHandler.removeCallbacks(runnable);
+        }
     }
 
     public int getCurrentPosition() {

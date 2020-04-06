@@ -15,6 +15,7 @@ import android.widget.LinearLayout;
 
 import com.tung.mysmartwatch.R;
 import com.tung.mysmartwatch.utils.broadcast.BroadcastUtils;
+import com.tung.mysmartwatch.utils.permissions.PermissionManager;
 
 public class ConfigureActivity extends AppCompatActivity implements View.OnClickListener {
     @Override
@@ -53,9 +54,12 @@ public class ConfigureActivity extends AppCompatActivity implements View.OnClick
                 intent = new Intent(this, MainActivity.class);
                 break;
             case R.id.btn_control:
-                intentBC = new Intent("music.event");
-                intentBC.putExtra("name", "Control press");
-                intent = new Intent(this, ControllerActivity.class);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+                        PermissionManager.checkPermissionRead(this)) {
+                    intentBC = new Intent("music.event");
+                    intentBC.putExtra("name", "Control press");
+                    intent = new Intent(this, ControllerActivity.class);
+                }
                 break;
         }
         if (intentBC != null) {

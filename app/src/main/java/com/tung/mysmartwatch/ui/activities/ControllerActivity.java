@@ -37,6 +37,7 @@ import com.tung.mysmartwatch.R;
 import com.tung.mysmartwatch.adapters.MusicItemAdapter;
 import com.tung.mysmartwatch.models.MusicItem;
 import com.tung.mysmartwatch.utils.broadcast.BroadcastUtils;
+import com.tung.mysmartwatch.utils.permissions.PermissionManager;
 import com.tung.mysmartwatch.utils.services.MusicService;
 import com.tung.mysmartwatch.utils.services.MusicServiceBinder;
 
@@ -82,7 +83,7 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         lvMusic.setAdapter(musicAdapter);
         lvMusic.setOnItemClickListener(this);
         checkNotch();
-        checkPermissionRead();
+        getListMusic();
 
         bindMusicService();
     }
@@ -100,7 +101,6 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         }
     }
 
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -108,10 +108,16 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    protected void onStop() {
+        super.onStop();
         serviceBinder.releaseBinder();
         unbindMusicService();
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        this.finish();
     }
 
     private void hideNavigatorBar() {
@@ -166,51 +172,6 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
 
         Collections.sort(listMusic);
         musicAdapter.notifyDataSetChanged();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == 1000) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getListMusic();
-            } else {
-                Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
-            }
-        }
-        if (requestCode == 1001) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getListMusic();
-            } else {
-                Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    private void checkPermissionRead() {
-        int permissionCheckRead =
-                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
-        if (permissionCheckRead != PackageManager.PERMISSION_GRANTED) {
-            requestPermission(Manifest.permission.READ_EXTERNAL_STORAGE, 1000);
-        } else {
-            checkPermissionWrite();
-        }
-    }
-
-    private void checkPermissionWrite() {
-        int permissionCheckWrite =
-                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        if (permissionCheckWrite != PackageManager.PERMISSION_GRANTED) {
-            requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, 1001);
-        } else {
-            getListMusic();
-        }
-    }
-
-    private void requestPermission(String permissionName, int permissionRequestCode) {
-        ActivityCompat.requestPermissions(this,
-                new String[]{permissionName}, permissionRequestCode);
     }
 
     private void playMusic(int i) {
