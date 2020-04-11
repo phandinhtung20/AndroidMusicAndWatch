@@ -1,18 +1,26 @@
 package com.tung.mysmartwatch.ui.activities;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.RemoteInput;
 
 import android.annotation.SuppressLint;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.tung.mysmartwatch.App;
 import com.tung.mysmartwatch.R;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import static com.tung.mysmartwatch.ui.activities.RoutingActivity.KEY_TEXT_REPLY;
 
 public class MainActivity extends AppCompatActivity {
     private TextView tvDate;
@@ -39,6 +47,29 @@ public class MainActivity extends AppCompatActivity {
         handler = new Handler();
         tvDate = findViewById(R.id.tv_date);
         dateFormat = new SimpleDateFormat("hh : mm : ss");
+        getMessageText(getIntent());
+    }
+
+
+    private void getMessageText(Intent intent) {
+        Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
+        if (remoteInput != null) {
+            String message = remoteInput.getCharSequence(KEY_TEXT_REPLY).toString();
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.cancel(4);
+        }
+
+//        Notification repliedNotification = new Notification.Builder(this, App.CHANNEL1_ID)
+//                .setSmallIcon(R.drawable.ic_message)
+//                .setContentText(getString(R.string.replied))
+//                .build();
+//
+//// Issue the new notification.
+//        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+//        notificationManager.notify(notificationId, repliedNotification);
     }
 
     @Override

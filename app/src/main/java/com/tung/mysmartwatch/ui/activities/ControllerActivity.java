@@ -1,18 +1,24 @@
 package com.tung.mysmartwatch.ui.activities;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.PendingIntent;
 import android.app.WallpaperManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -33,10 +39,13 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.tung.mysmartwatch.App;
 import com.tung.mysmartwatch.R;
 import com.tung.mysmartwatch.adapters.MusicItemAdapter;
 import com.tung.mysmartwatch.models.MusicItem;
 import com.tung.mysmartwatch.utils.broadcast.BroadcastUtils;
+import com.tung.mysmartwatch.utils.otto.BusProvider;
+import com.tung.mysmartwatch.utils.otto.events.MusicEvent;
 import com.tung.mysmartwatch.utils.permissions.PermissionManager;
 import com.tung.mysmartwatch.utils.services.MusicService;
 import com.tung.mysmartwatch.utils.services.MusicServiceBinder;
@@ -108,8 +117,8 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     }
 
     @Override
-    protected void onStop() {
-        super.onStop();
+    protected void onPause() {
+        super.onPause();
         serviceBinder.releaseBinder();
         unbindMusicService();
     }
@@ -177,12 +186,19 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     private void playMusic(int i) {
         tvMusicName.setText(listMusic.get(i).getName());
         pbDuration.setMax(listMusic.get(i).getDuration());
-        serviceBinder.setAudioProgressUpdateHandler(audioProgressUpdateHandler);
-        serviceBinder.startAudioFile(listMusic.get(i).getUri());
+//        serviceBinder.setAudioProgressUpdateHandler(audioProgressUpdateHandler);
+//        serviceBinder.startAudioFile(listMusic.get(i).getUri());
 
         Intent intentBC = new Intent("music.event");
-        intentBC.putExtra("name", "Play music");
+        intentBC.putExtra("name", listMusic.get(i).getUri());
+        intentBC.putExtra("play", true);
         BroadcastUtils.sendImplicitBroadcast(this, intentBC);
+
+        BusProvider.getInstance().getBus().post(new MusicEvent("tung utng", false,1, 1));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            notificationMusic(i);
+        }
     }
 
     @Override
@@ -230,5 +246,35 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
                 }
             };
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void notificationMusic(int i) {
+        Intent replyIntent = new Intent(this, MainActivity.class);
+        PendingIntent replyPendingIntent =
+                PendingIntent.getActivity(this, 0, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+        NotificationCompat.Style style = new androidx.media.app.NotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(1)
+                .setMediaSession(null);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, App.CHANNEL1_ID)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setSmallIcon(R.drawable.ic_music_player)
+                .addAction(R.drawable.apollo_holo_dark_prev, "Previous", replyPendingIntent)
+                .addAction(R.drawable.apollo_holo_dark_pause, "Pause", replyPendingIntent)
+                .addAction(R.drawable.apollo_holo_dark_next, "Next", replyPendingIntent)
+                .setStyle(style)
+                .setContentTitle(listMusic.get(i).getName())
+                .setContentText(listMusic.get(i).getSinger())
+                .setNumber(1)
+                .setLargeIcon(bitmap);
+
+        NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
+        managerCompat.notify(10, builder.build());
+    }
+
+    private void removeNotification() {
+        NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
+        managerCompat.cancel(10);
     }
 }

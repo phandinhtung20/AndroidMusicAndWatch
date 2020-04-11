@@ -7,7 +7,6 @@ import android.app.WallpaperManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -26,8 +25,8 @@ public class SplashActivity extends AppCompatActivity {
     private Runnable runnable = new Runnable() {
         @Override
         public void run() {
+//            Intent intent = new Intent(SplashActivity.this, RoutingActivity.class);
 //            Intent intent = new Intent(SplashActivity.this, ControllerActivity.class);
-
             Intent intent = new Intent(SplashActivity.this, ConfigureActivity.class);
             startActivity(intent);
             finish();
@@ -50,17 +49,25 @@ public class SplashActivity extends AppCompatActivity {
         super.onResume();
         hideNavigatorBar();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                !PermissionManager.checkPermissionRead(this)) {
-            PermissionManager.requestPermission(this);
-        } else {
-            final WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
-            final Drawable wallpaperDrawable = wallpaperManager.getDrawable();
-            LinearLayout ll = findViewById(R.id.bg);
-            ll.setBackground(wallpaperDrawable);
-            handler.postDelayed(runnable, 3000);
-        }
+        checkPermission();
     }
+
+    private void checkPermission() {
+        if (!PermissionManager.checkPermissionRead(this)) {
+            PermissionManager.requestPermissionRead(this);
+            return;
+        }
+        if (!PermissionManager.checkPermissionForeground(this)) {
+            PermissionManager.requestPermissionForeground(this);
+            return;
+        }
+        final WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
+        final Drawable wallpaperDrawable = wallpaperManager.getDrawable();
+        LinearLayout ll = findViewById(R.id.bg);
+        ll.setBackground(wallpaperDrawable);
+        handler.postDelayed(runnable, 3000);
+    }
+
 
     @Override
     protected void onPause() {
