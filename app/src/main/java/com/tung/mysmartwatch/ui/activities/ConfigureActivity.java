@@ -1,14 +1,8 @@
 package com.tung.mysmartwatch.ui.activities;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 
-import android.app.NotificationManager;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.DisplayCutout;
@@ -18,12 +12,9 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 
-import com.tung.mysmartwatch.App;
 import com.tung.mysmartwatch.R;
-import com.tung.mysmartwatch.constants.Constant;
 import com.tung.mysmartwatch.utils.broadcast.BroadcastUtils;
 import com.tung.mysmartwatch.utils.permissions.PermissionManager;
-import com.tung.mysmartwatch.utils.services.NotificationService;
 
 public class ConfigureActivity extends AppCompatActivity implements View.OnClickListener {
     @Override
@@ -57,7 +48,6 @@ public class ConfigureActivity extends AppCompatActivity implements View.OnClick
         Intent intentBC = null;
         switch (view.getId()) {
             case R.id.btn_watch:
-//                startService(view);
                 intentBC = new Intent("music.event");
                 intentBC.putExtra("name", "Watch press");
                 intent = new Intent(this, MainActivity.class);
@@ -113,11 +103,5 @@ public class ConfigureActivity extends AppCompatActivity implements View.OnClick
                 }
             });
         }
-    }
-
-    public void startService(View v) {
-//        Intent serviceIntent = new Intent(this, NotificationService.class);
-//        serviceIntent.setAction(Constant.ACTION.STARTFOREGROUND_ACTION);
-//        startService(serviceIntent)
     }
 }

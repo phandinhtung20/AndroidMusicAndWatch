@@ -1,24 +1,12 @@
 package com.tung.mysmartwatch.ui.activities;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.core.content.ContextCompat;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.PendingIntent;
 import android.app.WallpaperManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -37,44 +25,67 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.tung.mysmartwatch.App;
 import com.tung.mysmartwatch.R;
 import com.tung.mysmartwatch.adapters.MusicItemAdapter;
 import com.tung.mysmartwatch.models.MusicItem;
-import com.tung.mysmartwatch.utils.broadcast.BroadcastUtils;
-import com.tung.mysmartwatch.utils.otto.BusProvider;
-import com.tung.mysmartwatch.utils.otto.events.MusicEvent;
-import com.tung.mysmartwatch.utils.permissions.PermissionManager;
+import com.tung.mysmartwatch.utils.notifcation.NotificationUtil;
 import com.tung.mysmartwatch.utils.services.MusicService;
-import com.tung.mysmartwatch.utils.services.MusicServiceBinder;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static com.tung.mysmartwatch.utils.play_music.MusicUtility.getNextTime;
+
 public class ControllerActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
+    private boolean bound;
     private TextView tvMusicName;
     private ProgressBar pbDuration;
     private List<MusicItem> listMusic;
     private ArrayAdapter musicAdapter;
 
-    private MusicServiceBinder serviceBinder;
+    private MusicService musicService;
+    private MusicService.MusicBinder serviceBinder;
+
+    private Handler audioProgressHandler = new Handler();
+    private Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    pbDuration.setProgress(musicService.getCurrentPosition());
+                }
+            });
+            audioProgressHandler.postDelayed(this, getNextTime());
+        }
+    };
 
     private ServiceConnection musicServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            serviceBinder = (MusicServiceBinder) iBinder;
-            serviceBinder.setContext(ControllerActivity.this);
-            createAudioProgressbarUpdater();
+            serviceBinder = (MusicService.MusicBinder) iBinder;
+            musicService = serviceBinder.getService();
+            bound = true;
+            System.out.println("ServiceConnection connected");
+            checkMusicStarted();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-
+            bound = false;
+            System.out.println("ServiceConnection disconnected");
         }
     };
+
+    private void checkMusicStarted() {
+        if (musicService.isPlaying()) {
+            tvMusicName.setText(musicService.getMusicItem().getName());
+            pbDuration.setMax(musicService.getMusicItem().getDuration());
+            startCount();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,19 +104,22 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         lvMusic.setOnItemClickListener(this);
         checkNotch();
         getListMusic();
-
-        bindMusicService();
+        System.out.println("Activity onCreate");
     }
 
     private void bindMusicService() {
         if (serviceBinder == null) {
+            System.out.println("Activity bind");
             Intent intent = new Intent(this, MusicService.class);
             bindService(intent, musicServiceConnection, BIND_AUTO_CREATE);
+        } else {
+            System.out.println("Activity bind null");
         }
     }
 
     private void unbindMusicService() {
-        if (serviceBinder != null) {
+        if (bound) {
+            System.out.println("Activity unbind");
             unbindService(musicServiceConnection);
         }
     }
@@ -117,15 +131,23 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        serviceBinder.releaseBinder();
-        unbindMusicService();
+    protected void onStart() {
+        System.out.println("Activity onStart");
+        super.onStart();
+//        bindMusicService();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        System.out.println("Activity onStop");
+//        unbindMusicService();
     }
 
     @Override
     public void onBackPressed() {
         super.onBackPressed();
+        System.out.println("Activity onBackPressed");
         this.finish();
     }
 
@@ -184,21 +206,14 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
     }
 
     private void playMusic(int i) {
-        tvMusicName.setText(listMusic.get(i).getName());
-        pbDuration.setMax(listMusic.get(i).getDuration());
-//        serviceBinder.setAudioProgressUpdateHandler(audioProgressUpdateHandler);
-//        serviceBinder.startAudioFile(listMusic.get(i).getUri());
-
-        Intent intentBC = new Intent("music.event");
-        intentBC.putExtra("name", listMusic.get(i).getUri());
-        intentBC.putExtra("play", true);
-        BroadcastUtils.sendImplicitBroadcast(this, intentBC);
-
-        BusProvider.getInstance().getBus().post(new MusicEvent("tung utng", false,1, 1));
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            notificationMusic(i);
-        }
+        Intent intent = new Intent(this, MusicService.class);
+        intent.putExtra("play", true);
+        intent.putExtra("name", listMusic.get(i).getUri());
+        startService(intent);
+//        tvMusicName.setText(listMusic.get(i).getName());
+//        pbDuration.setMax(listMusic.get(i).getDuration());
+//        startCount();
+//        musicService.startAudioFile(listMusic.get(i));
     }
 
     @Override
@@ -232,49 +247,8 @@ public class ControllerActivity extends AppCompatActivity implements AdapterView
         }
     }
 
-    private Handler audioProgressUpdateHandler = null;
-    @SuppressLint("HandlerLeak")
-    private void createAudioProgressbarUpdater() {
-        if(audioProgressUpdateHandler == null) {
-            audioProgressUpdateHandler = new Handler() {
-                @Override
-                public void handleMessage(Message msg) {
-                    if (msg == null) return;
-                    if (msg.what == serviceBinder.UPDATE_AUDIO_PROGRESS_BAR) {
-                        pbDuration.setProgress(serviceBinder.getCurrentPosition());
-                    }
-                }
-            };
-        }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public void notificationMusic(int i) {
-        Intent replyIntent = new Intent(this, MainActivity.class);
-        PendingIntent replyPendingIntent =
-                PendingIntent.getActivity(this, 0, replyIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
-        NotificationCompat.Style style = new androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(1)
-                .setMediaSession(null);
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, App.CHANNEL1_ID)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setSmallIcon(R.drawable.ic_music_player)
-                .addAction(R.drawable.apollo_holo_dark_prev, "Previous", replyPendingIntent)
-                .addAction(R.drawable.apollo_holo_dark_pause, "Pause", replyPendingIntent)
-                .addAction(R.drawable.apollo_holo_dark_next, "Next", replyPendingIntent)
-                .setStyle(style)
-                .setContentTitle(listMusic.get(i).getName())
-                .setContentText(listMusic.get(i).getSinger())
-                .setNumber(1)
-                .setLargeIcon(bitmap);
-
-        NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
-        managerCompat.notify(10, builder.build());
-    }
-
-    private void removeNotification() {
-        NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
-        managerCompat.cancel(10);
+    private void startCount() {
+        audioProgressHandler.removeCallbacks(runnable);
+        audioProgressHandler.post(runnable);
     }
 }

@@ -39,7 +39,6 @@
             android:theme="@style/AppTheme" />
 
         <service android:name=".utils.services.MusicService" />
-        <service android:name=".utils.services.NotificationService" />
     </application>
     <permission
         android:name="com.tung.mysmartwatch.music_provider.WRITE_DATABASE"

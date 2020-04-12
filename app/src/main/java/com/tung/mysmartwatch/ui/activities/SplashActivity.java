@@ -16,6 +16,7 @@ import android.widget.Toast;
 
 import com.tung.mysmartwatch.R;
 import com.tung.mysmartwatch.utils.permissions.PermissionManager;
+import com.tung.mysmartwatch.utils.services.MusicService;
 
 import static com.tung.mysmartwatch.utils.permissions.PermissionManager.REQUEST_CODE_READ;
 
@@ -50,6 +51,7 @@ public class SplashActivity extends AppCompatActivity {
         hideNavigatorBar();
 
         checkPermission();
+        startService(new Intent(this, MusicService.class));
     }
 
     private void checkPermission() {
